@@ -45,15 +45,16 @@ import {replaceProjectIdToken} from '@google-cloud/projectify';
 import {promisifyAll} from '@google-cloud/promisify';
 import arrify = require('arrify');
 import * as extend from 'extend';
-import {GoogleAuth} from 'google-gax';
+import {GoogleAuth, CallOptions} from 'google-gax';
 import * as gax from 'google-gax';
 import * as is from 'is';
 import * as through from 'through2';
 
 import {AppProfile} from './app-profile';
-import {Cluster} from './cluster';
+import {Cluster, GenericCallback} from './cluster';
 import {Instance} from './instance';
 import {shouldRetryRequest} from './decorateStatus';
+import {ServiceError} from '@grpc/grpc-js';
 
 const retryRequest = require('retry-request');
 const streamEvents = require('stream-events');
@@ -62,6 +63,43 @@ const PKG = require('../../package.json');
 const v2 = require('./v2');
 const {grpc} = new gax.GrpcClient();
 
+export interface RequestConfig {
+  gaxOpts?: CallOptions;
+  method: string;
+  reqOpts: {};
+  client: string;
+  retryOpts?: {};
+}
+
+export type RequestCallback<T, R = void> = R extends void
+  ? GenericCallback<T>
+  : ResourceCallback<T, R>;
+export interface ResourceCallback<Resource, Response> {
+  (
+    err: ServiceError | null,
+    resource?: Resource | null,
+    response?: Response
+  ): void;
+}
+export interface PagedCallback<Item, Response> {
+  (
+    err: ServiceError | null,
+    results?: Item[] | null,
+    nextQuery?: {} | null,
+    response?: Response | null
+  ): void;
+}
+export interface OptionInterface {
+  gaxOptions?: CallOptions;
+}
+export interface AppProfileOptions extends OptionInterface {
+  routing: Cluster;
+  allowTransactionalWrites?: boolean;
+  description?: string;
+  ignoreWarnings?: string;
+}
+export type CreateAppProfileCallback = GenericCallback<AppProfile>;
+export type CreateAppProfileResponse = [AppProfile];
 /**
  * @typedef {object} ClientConfig
  * @property {string} [apiEndpoint] Override the default API endpoint used
@@ -669,7 +707,7 @@ export class Bigtable {
    * @param {object} config.reqOpts Request options.
    * @param {function} [callback] Callback function.
    */
-  request(config, callback) {
+  request<T, R = void>(config: RequestConfig, callback: RequestCallback<T, R>) {
     const isStreamMode = !callback;
 
     let gaxStream;
