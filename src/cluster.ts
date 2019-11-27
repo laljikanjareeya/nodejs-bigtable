@@ -19,7 +19,7 @@ import {CallOptions, Operation as GaxOperation} from 'google-gax';
 import {ServiceError} from '@grpc/grpc-js';
 
 import {google as btTypes} from '../proto/bigtable';
-import {Bigtable} from '.';
+import {Bigtable, OptionInterface} from '.';
 import {Instance} from './instance';
 
 export interface GenericCallback<T> {
@@ -46,14 +46,13 @@ export type BooleanResponse = [boolean];
 export type GetClusterResponse = [ICluster, IOperation];
 export type MetadataResponse = [Metadata, IOperation];
 
-export type CreateClusterCallback = GenericCallback<IOperation>;
+export type CreateClusterCallback = GenericClusterCallback<IOperation>;
 export type DeleteClusterCallback = GenericCallback<IOperation>;
 export type ExistsClusterCallback = GenericCallback<boolean>;
 export type GetClusterCallback = GenericClusterCallback<ICluster>;
 export type SetClusterMetadataCallback = GenericOperationCallback<IOperation>;
 
-export interface CreateClusterOptions {
-  gaxOptions?: CallOptions;
+export interface CreateClusterOptions extends OptionInterface {
   location: string;
   nodes: number;
   storage?: string;
