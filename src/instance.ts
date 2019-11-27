@@ -20,7 +20,12 @@ import arrify = require('arrify');
 import * as is from 'is';
 import snakeCase = require('lodash.snakecase');
 import {AppProfile} from './app-profile';
-import {Cluster} from './cluster';
+import {
+  Cluster,
+  CreateClusterOptions,
+  CreateClusterCallback,
+  CreateClusterResponse,
+} from './cluster';
 import {Family} from './family';
 import {
   GetIamPolicyCallback,
@@ -225,6 +230,15 @@ Please use the format 'my-instance' or '${bigtable.projectName}/instances/my-ins
     );
   }
 
+  createCluster(
+    id: string,
+    options: CreateClusterOptions
+  ): Promise<CreateClusterResponse>;
+  createCluster(
+    id: string,
+    options: CreateClusterOptions,
+    callback: CreateClusterCallback
+  ): void;
   /**
    * Create a cluster.
    *
@@ -252,11 +266,16 @@ Please use the format 'my-instance' or '${bigtable.projectName}/instances/my-ins
    * @example <caption>include:samples/document-snippets/instance.js</caption>
    * region_tag:bigtable_create_cluster
    */
-  createCluster(id, options, callback) {
-    if (is.function(options)) {
-      callback = options;
-      options = {};
-    }
+  createCluster(
+    id: string,
+    optionsOrCallback: CreateClusterOptions | CreateClusterCallback,
+    callback?: CreateClusterCallback
+  ): Promise<CreateClusterResponse> | void {
+    const options = (typeof optionsOrCallback === 'object'
+      ? optionsOrCallback
+      : {}) as CreateClusterOptions;
+    callback =
+      typeof optionsOrCallback === 'function' ? optionsOrCallback : callback;
 
     const reqOpts: any = {
       parent: this.name,
@@ -283,7 +302,7 @@ Please use the format 'my-instance' or '${bigtable.projectName}/instances/my-ins
       reqOpts.cluster.defaultStorageType = storageType;
     }
 
-    this.bigtable.request(
+    this.bigtable.request<Cluster, google.longrunning.IOperation>(
       {
         client: 'BigtableInstanceAdminClient',
         method: 'createCluster',
@@ -295,7 +314,7 @@ Please use the format 'my-instance' or '${bigtable.projectName}/instances/my-ins
           args.splice(1, 0, this.cluster(id));
         }
 
-        callback(...args);
+        callback!(...args);
       }
     );
   }
