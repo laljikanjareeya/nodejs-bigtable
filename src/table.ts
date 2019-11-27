@@ -30,6 +30,8 @@ import {Mutation} from './mutation';
 import {Row} from './row';
 import {ChunkTransformer} from './chunktransformer';
 import {CallOptions} from 'google-gax';
+import {RequestCallback, OptionInterface} from '.';
+import {google} from '../proto/bigtable';
 
 // See protos/google/rpc/code.proto
 // (4=DEADLINE_EXCEEDED, 10=ABORTED, 14=UNAVAILABLE)
@@ -128,7 +130,14 @@ export interface GetIamPolicyOptions {
 
 export interface SetIamPolicyCallback extends GetIamPolicyCallback {}
 export type SetIamPolicyResponse = GetIamPolicyResponse;
-
+export type GetTablesCallback = RequestCallback<
+  Table[],
+  google.bigtable.admin.v2.ITable[]
+>;
+export type GetTablesResponse = [Table[], google.bigtable.admin.v2.ITable[]];
+export interface GetTablesOption extends OptionInterface {
+  view?: string;
+}
 /**
  * @callback TestIamPermissionsCallback
  * @param {?Error} err Request error, if any.
