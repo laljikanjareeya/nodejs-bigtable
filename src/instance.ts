@@ -19,7 +19,11 @@ import {promisifyAll} from '@google-cloud/promisify';
 import arrify = require('arrify');
 import * as is from 'is';
 import snakeCase = require('lodash.snakecase');
-import {AppProfile} from './app-profile';
+import {
+  AppProfile,
+  GetAppProfilesCallback,
+  GetAppProfilesResponse,
+} from './app-profile';
 import {Cluster} from './cluster';
 import {Family} from './family';
 import {
@@ -492,11 +496,17 @@ Please use the format 'my-instance' or '${bigtable.projectName}/instances/my-ins
     });
   }
 
+  getAppProfiles(gaxOptions?: CallOptions): Promise<GetAppProfilesResponse>;
+  getAppProfiles(callback: GetAppProfilesCallback): void;
+  getAppProfiles(
+    gaxOptions: CallOptions,
+    callback: GetAppProfilesCallback
+  ): void;
   /**
    * Get App Profile objects for this instance.
    *
    * @param {object} [gaxOptions] Request configuration options, outlined here:
-   *     https://googleapis.github.io/gax-nodejs/CallSettings.html.
+   *     https://googleapis.github.io/gax-nodejs/classes/CallSettings.html.
    * @param {function} callback The callback function.
    * @param {?error} callback.error An error returned while making this request.
    * @param {AppProfile[]} callback.appProfiles List of all AppProfiles.
@@ -505,17 +515,21 @@ Please use the format 'my-instance' or '${bigtable.projectName}/instances/my-ins
    * @example <caption>include:samples/document-snippets/instance.js</caption>
    * region_tag:bigtable_get_app_profiles
    */
-  getAppProfiles(gaxOptions, callback) {
-    if (is.function(gaxOptions)) {
-      callback = gaxOptions;
-      gaxOptions = {};
-    }
-
+  getAppProfiles(
+    gaxOptionsOrCallback?: CallOptions | GetAppProfilesCallback,
+    callback?: GetAppProfilesCallback
+  ): Promise<GetAppProfilesResponse> | void {
+    const gaxOptions =
+      typeof gaxOptionsOrCallback === 'object' ? gaxOptionsOrCallback : {};
+    callback =
+      typeof gaxOptionsOrCallback === 'function'
+        ? gaxOptionsOrCallback
+        : callback;
     const reqOpts = {
       parent: this.name,
     };
 
-    this.bigtable.request(
+    this.bigtable.request<AppProfile[], google.bigtable.admin.v2.IAppProfile[]>(
       {
         client: 'BigtableInstanceAdminClient',
         method: 'listAppProfiles',
@@ -524,11 +538,11 @@ Please use the format 'my-instance' or '${bigtable.projectName}/instances/my-ins
       },
       (err, resp) => {
         if (err) {
-          callback(err);
+          callback!(err);
           return;
         }
 
-        const appProfiles = resp.map(appProfileObj => {
+        const appProfiles = resp!.map(appProfileObj => {
           const appProfile = this.appProfile(
             appProfileObj.name.split('/').pop()
           );
@@ -536,7 +550,7 @@ Please use the format 'my-instance' or '${bigtable.projectName}/instances/my-ins
           return appProfile;
         });
 
-        callback(null, appProfiles, resp);
+        callback!(null, appProfiles, resp!);
       }
     );
   }
