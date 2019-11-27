@@ -30,7 +30,18 @@ import {Mutation} from './mutation';
 import {Row} from './row';
 import {ChunkTransformer} from './chunktransformer';
 import {CallOptions} from 'google-gax';
+import {OptionInterface, RequestCallback} from '.';
+import {google} from '../proto/bigtable';
 
+export interface CreateTableOptions extends OptionInterface {
+  families?: Family[];
+  splits?: string[];
+}
+export type CreateTableCallback = RequestCallback<
+  Table,
+  google.bigtable.admin.v2.ITable
+>;
+export type CreateTableResponse = [Table, google.bigtable.admin.v2.ITable];
 // See protos/google/rpc/code.proto
 // (4=DEADLINE_EXCEEDED, 10=ABORTED, 14=UNAVAILABLE)
 const RETRYABLE_STATUS_CODES = new Set([4, 10, 14]);

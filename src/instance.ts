@@ -32,6 +32,9 @@ import {
   Table,
   TestIamPermissionsCallback,
   TestIamPermissionsResponse,
+  CreateTableOptions,
+  CreateTableCallback,
+  CreateTableResponse,
 } from './table';
 import {CallOptions} from 'google-gax';
 import {
@@ -300,6 +303,16 @@ Please use the format 'my-instance' or '${bigtable.projectName}/instances/my-ins
     );
   }
 
+  createTable(
+    id: string,
+    options?: CreateTableOptions
+  ): Promise<CreateTableResponse>;
+  createTable(id: string, callback: CreateTableCallback): void;
+  createTable(
+    id: string,
+    options: CreateTableOptions,
+    callback: CreateTableCallback
+  ): void;
   /**
    * Create a table on your Bigtable instance.
    *
@@ -324,19 +337,21 @@ Please use the format 'my-instance' or '${bigtable.projectName}/instances/my-ins
    * @example <caption>include:samples/document-snippets/instance.js</caption>
    * region_tag:bigtable_create_table
    */
-  createTable(id, options, callback) {
+  createTable(
+    id: string,
+    optionsOrCallback?: CreateTableOptions | CreateTableCallback,
+    callback?: CreateTableCallback
+  ): Promise<CreateTableResponse> | void {
     if (!id) {
       throw new Error('An id is required to create a table.');
     }
 
-    options = options || {};
+    const options =
+      typeof optionsOrCallback === 'object' ? optionsOrCallback : {};
+    callback =
+      typeof optionsOrCallback === 'function' ? optionsOrCallback : callback;
 
-    if (is.function(options)) {
-      callback = options;
-      options = {};
-    }
-
-    const reqOpts: any = {
+    const reqOpts = {
       parent: this.name,
       tableId: id,
       table: {
@@ -348,7 +363,7 @@ Please use the format 'my-instance' or '${bigtable.projectName}/instances/my-ins
     };
 
     if (options.splits) {
-      reqOpts.initialSplits = options.splits.map(key => ({
+      (reqOpts as any).initialSplits = options.splits.map(key => ({
         key,
       }));
     }
@@ -358,22 +373,25 @@ Please use the format 'my-instance' or '${bigtable.projectName}/instances/my-ins
         if (is.string(family)) {
           family = {
             name: family,
-          };
+          } as Family;
         }
 
-        const columnFamily: any = (families[family.name] = {});
+        const columnFamily = ((families as any)[family.name] = {}) as any;
 
-        if (family.rule) {
-          columnFamily.gcRule = Family.formatRule_(family.rule);
+        if ((family as any).rule) {
+          columnFamily.gcRule = Family.formatRule_((family as any).rule);
         }
 
         return families;
       }, {});
 
-      reqOpts.table.columnFamilies = columnFamilies;
+      (reqOpts.table as any).columnFamilies = columnFamilies as Map<
+        string,
+        Family
+      >;
     }
 
-    this.bigtable.request(
+    this.bigtable.request<Table, google.bigtable.admin.v2.ITable>(
       {
         client: 'BigtableTableAdminClient',
         method: 'createTable',
@@ -387,7 +405,7 @@ Please use the format 'my-instance' or '${bigtable.projectName}/instances/my-ins
           args.splice(1, 0, table);
         }
 
-        callback(...args);
+        callback!(...args);
       }
     );
   }
@@ -398,7 +416,7 @@ Please use the format 'my-instance' or '${bigtable.projectName}/instances/my-ins
    * @param {string} id The id of the cluster.
    * @returns {Cluster}
    */
-  cluster(id) {
+  cluster(id: string) {
     return new Cluster(this, id);
   }
 
