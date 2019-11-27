@@ -20,7 +20,7 @@ import arrify = require('arrify');
 import * as is from 'is';
 import snakeCase = require('lodash.snakecase');
 import {AppProfile} from './app-profile';
-import {Cluster} from './cluster';
+import {Cluster, GenericCallback} from './cluster';
 import {Family} from './family';
 import {
   GetIamPolicyCallback,
@@ -39,9 +39,20 @@ import {
   CreateAppProfileCallback,
   CreateAppProfileResponse,
   Bigtable,
+  RequestCallback,
 } from '.';
 import {google} from '../proto/bigtable';
 
+export type InstanceExistsResponse = [boolean];
+export type InstanceExistsCallback = GenericCallback<boolean>;
+export type GetInstanceResponse = [
+  Instance,
+  google.bigtable.admin.v2.IInstance
+];
+export type GetInstanceCallback = RequestCallback<
+  Instance,
+  google.bigtable.admin.v2.IInstance
+>;
 /**
  * Create an Instance object to interact with a Cloud Bigtable instance.
  *
@@ -434,11 +445,14 @@ Please use the format 'my-instance' or '${bigtable.projectName}/instances/my-ins
     );
   }
 
+  exists(gaxOptions: CallOptions): Promise<InstanceExistsResponse>;
+  exists(callback: InstanceExistsCallback): void;
+  exists(gaxOptions: CallOptions, callback: InstanceExistsCallback): void;
   /**
    * Check if an instance exists.
    *
    * @param {object} [gaxOptions] Request configuration options, outlined
-   *     here: https://googleapis.github.io/gax-nodejs/CallSettings.html.
+   *     https://googleapis.github.io/gax-nodejs/classes/CallSettings.html.
    * @param {function} callback The callback function.
    * @param {?error} callback.err An error returned while making this
    *     request.
@@ -447,32 +461,40 @@ Please use the format 'my-instance' or '${bigtable.projectName}/instances/my-ins
    * @example <caption>include:samples/document-snippets/instance.js</caption>
    * region_tag:bigtable_exists_instance
    */
-  exists(gaxOptions?, callback?) {
-    if (is.fn(gaxOptions)) {
-      callback = gaxOptions;
-      gaxOptions = {};
-    }
+  exists(
+    gaxOptionsOrcallback?: CallOptions | InstanceExistsCallback,
+    callback?: InstanceExistsCallback
+  ): Promise<InstanceExistsResponse> | void {
+    const gaxOptions =
+      typeof gaxOptionsOrcallback === 'object' ? gaxOptionsOrcallback : {};
+    callback =
+      typeof gaxOptionsOrcallback === 'function'
+        ? gaxOptionsOrcallback
+        : callback;
 
     this.getMetadata(gaxOptions, err => {
       if (err) {
         if (err.code === 5) {
-          callback(null, false);
+          callback!(null, false);
           return;
         }
 
-        callback(err);
+        callback!(err);
         return;
       }
 
-      callback(null, true);
+      callback!(null, true);
     });
   }
 
+  get(gaxOptions?: CallOptions): Promise<GetInstanceResponse>;
+  get(callback: GetInstanceCallback): void;
+  get(gaxOptions: CallOptions, callback: GetInstanceCallback): void;
   /**
    * Get an instance if it exists.
    *
    * @param {object} [gaxOptions] Request configuration options, outlined here:
-   *     https://googleapis.github.io/gax-nodejs/CallSettings.html.
+   *     https://googleapis.github.io/gax-nodejs/classes/CallSettings.html.
    * @param {function} callback The callback function.
    * @param {?error} callback.error An error returned while making this request.
    * @param {Instance} callback.instance The Instance object.
@@ -481,14 +503,19 @@ Please use the format 'my-instance' or '${bigtable.projectName}/instances/my-ins
    * @example <caption>include:samples/document-snippets/instance.js</caption>
    * region_tag:bigtable_get_instance
    */
-  get(gaxOptions, callback) {
-    if (is.fn(gaxOptions)) {
-      callback = gaxOptions;
-      gaxOptions = {};
-    }
+  get(
+    gaxOptionsOrCallback?: CallOptions | GetInstanceCallback,
+    callback?: GetInstanceCallback
+  ): Promise<GetInstanceResponse> | void {
+    const gaxOptions =
+      typeof gaxOptionsOrCallback === 'object' ? gaxOptionsOrCallback : {};
+    callback =
+      typeof gaxOptionsOrCallback === 'function'
+        ? gaxOptionsOrCallback
+        : callback;
 
     this.getMetadata(gaxOptions, (err, metadata) => {
-      callback(err, err ? null : this, metadata);
+      callback!(err, err ? null : this, metadata!);
     });
   }
 
@@ -646,11 +673,14 @@ Please use the format 'my-instance' or '${bigtable.projectName}/instances/my-ins
     );
   }
 
+  getMetadata(gaxOptions?: CallOptions): Promise<GetInstanceResponse>;
+  getMetadata(callback: GetInstanceCallback): void;
+  getMetadata(gaxOptions: CallOptions, callback: GetInstanceCallback): void;
   /**
    * Get the instance metadata.
    *
    * @param {object} [gaxOptions] Request configuration options, outlined here:
-   *     https://googleapis.github.io/gax-nodejs/CallSettings.html.
+   *     https://googleapis.github.io/gax-nodejs/classes/CallSettings.html.
    * @param {function} callback The callback function.
    * @param {?error} callback.err An error returned while making this
    *     request.
@@ -659,13 +689,18 @@ Please use the format 'my-instance' or '${bigtable.projectName}/instances/my-ins
    * @example <caption>include:samples/document-snippets/instance.js</caption>
    * region_tag:bigtable_get_instance_metadata
    */
-  getMetadata(gaxOptions, callback) {
-    if (is.fn(gaxOptions)) {
-      callback = gaxOptions;
-      gaxOptions = {};
-    }
+  getMetadata(
+    gaxOptionsOrCallback?: CallOptions | GetInstanceCallback,
+    callback?: GetInstanceCallback
+  ): Promise<GetInstanceResponse> | void {
+    const gaxOptions =
+      typeof gaxOptionsOrCallback === 'object' ? gaxOptionsOrCallback : {};
+    callback =
+      typeof gaxOptionsOrCallback === 'function'
+        ? gaxOptionsOrCallback
+        : callback;
 
-    this.bigtable.request(
+    this.bigtable.request<Instance, google.bigtable.admin.v2.IInstance>(
       {
         client: 'BigtableInstanceAdminClient',
         method: 'getInstance',
@@ -679,7 +714,7 @@ Please use the format 'my-instance' or '${bigtable.projectName}/instances/my-ins
           this.metadata = args[1];
         }
 
-        callback(...args);
+        callback!(...args);
       }
     );
   }
