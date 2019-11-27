@@ -39,9 +39,18 @@ import {
   CreateAppProfileCallback,
   CreateAppProfileResponse,
   Bigtable,
+  RequestCallback,
 } from '.';
 import {google} from '../proto/bigtable';
 
+export type SetInstanceMetadataCallback = RequestCallback<
+  Instance,
+  google.bigtable.admin.v2.IInstance
+>;
+export type SetInstanceMetadataResponse = [
+  Instance,
+  google.bigtable.admin.v2.IInstance
+];
 /**
  * Create an Instance object to interact with a Cloud Bigtable instance.
  *
@@ -797,6 +806,19 @@ Please use the format 'my-instance' or '${bigtable.projectName}/instances/my-ins
     );
   }
 
+  setMetadata(
+    metadata: google.bigtable.admin.v2.IInstance,
+    gaxOptions?: CallOptions
+  ): Promise<SetInstanceMetadataResponse>;
+  setMetadata(
+    metadata: google.bigtable.admin.v2.IInstance,
+    callback: SetInstanceMetadataCallback
+  ): void;
+  setMetadata(
+    metadata: google.bigtable.admin.v2.IInstance,
+    gaxOptions: CallOptions,
+    callback: SetInstanceMetadataCallback
+  ): void;
   /**
    * Set the instance metadata.
    *
@@ -805,7 +827,7 @@ Please use the format 'my-instance' or '${bigtable.projectName}/instances/my-ins
    *     instance as it appears in UIs. It can be changed at any time, but
    *     should be kept globally unique to avoid confusion.
    * @param {object} [gaxOptions] Request configuration options, outlined here:
-   *     https://googleapis.github.io/gax-nodejs/global.html#CallOptions.
+   *     https://googleapis.github.io/gax-nodejs/classes/CallSettings.html.
    * @param {function} callback The callback function.
    * @param {?error} callback.err An error returned while making this
    *     request.
@@ -814,11 +836,17 @@ Please use the format 'my-instance' or '${bigtable.projectName}/instances/my-ins
    * @example <caption>include:samples/document-snippets/instance.js</caption>
    * region_tag:bigtable_set_meta_data
    */
-  setMetadata(metadata, gaxOptions, callback) {
-    if (is.fn(gaxOptions)) {
-      callback = gaxOptions;
-      gaxOptions = {};
-    }
+  setMetadata(
+    metadata: google.bigtable.admin.v2.IInstance,
+    gaxOptionsOrCallback?: CallOptions | SetInstanceMetadataCallback,
+    callback?: SetInstanceMetadataCallback
+  ): Promise<SetInstanceMetadataResponse> | void {
+    const gaxOptions =
+      typeof gaxOptionsOrCallback === 'object' ? gaxOptionsOrCallback : {};
+    callback =
+      typeof gaxOptionsOrCallback === 'function'
+        ? gaxOptionsOrCallback
+        : callback;
     const reqOpts: any = {
       instance: Object.assign({name: this.name}, metadata),
       updateMask: {
@@ -833,7 +861,7 @@ Please use the format 'my-instance' or '${bigtable.projectName}/instances/my-ins
       }
     });
 
-    this.bigtable.request(
+    this.bigtable.request<Instance, google.bigtable.admin.v2.IInstance>(
       {
         client: 'BigtableInstanceAdminClient',
         method: 'partialUpdateInstance',
@@ -845,7 +873,7 @@ Please use the format 'my-instance' or '${bigtable.projectName}/instances/my-ins
           this.metadata = args[1];
         }
 
-        callback(...args);
+        callback!(...args);
       }
     );
   }
@@ -862,7 +890,7 @@ Please use the format 'my-instance' or '${bigtable.projectName}/instances/my-ins
    * const instance = bigtable.instance('my-instance');
    * const table = instance.table('presidents');
    */
-  table(id) {
+  table(id: string) {
     return new Table(this, id);
   }
 
@@ -909,7 +937,7 @@ Please use the format 'my-instance' or '${bigtable.projectName}/instances/my-ins
       permissions: arrify(permissions),
     };
 
-    this.bigtable.request(
+    this.bigtable.request<string[]>(
       {
         client: 'BigtableInstanceAdminClient',
         method: 'testIamPermissions',
@@ -921,7 +949,7 @@ Please use the format 'my-instance' or '${bigtable.projectName}/instances/my-ins
           callback!(err);
           return;
         }
-        callback!(null, resp.permissions);
+        callback!(null, (resp as any)!.permissions);
       }
     );
   }
