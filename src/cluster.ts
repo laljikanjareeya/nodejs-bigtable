@@ -19,7 +19,7 @@ import {CallOptions, Operation as GaxOperation} from 'google-gax';
 import {ServiceError} from '@grpc/grpc-js';
 
 import {google as btTypes} from '../proto/bigtable';
-import {Bigtable} from '.';
+import {Bigtable, RequestCallback} from '.';
 import {Instance} from './instance';
 
 export interface GenericCallback<T> {
@@ -70,7 +70,14 @@ export interface GetClusterMetadataCallback {
 export interface Metadata extends CreateClusterOptions {
   displayName?: string;
 }
-
+export type GetClustersCallback = RequestCallback<
+  Cluster[],
+  btTypes.bigtable.admin.v2.IListClustersResponse
+>;
+export type GetClustersResponse = [
+  Cluster[],
+  btTypes.bigtable.admin.v2.IListClustersResponse
+];
 /**
  * Create a cluster object to interact with your cluster.
  *

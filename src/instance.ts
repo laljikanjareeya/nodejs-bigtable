@@ -20,7 +20,12 @@ import arrify = require('arrify');
 import * as is from 'is';
 import snakeCase = require('lodash.snakecase');
 import {AppProfile} from './app-profile';
-import {Cluster} from './cluster';
+import {
+  Cluster,
+  GetClustersCallback,
+  GetClustersResponse,
+  Metadata,
+} from './cluster';
 import {Family} from './family';
 import {
   GetIamPolicyCallback,
@@ -541,11 +546,14 @@ Please use the format 'my-instance' or '${bigtable.projectName}/instances/my-ins
     );
   }
 
+  getClusters(gaxOptions?: CallOptions): Promise<GetClustersResponse>;
+  getClusters(callback: GetClustersCallback): void;
+  getClusters(gaxOptions: CallOptions, callback: GetClustersCallback): void;
   /**
    * Get Cluster objects for all of your clusters.
    *
    * @param {object} [gaxOptions] Request configuration options, outlined here:
-   *     https://googleapis.github.io/gax-nodejs/CallSettings.html.
+   *     https://googleapis.github.io/gax-nodejs/classes/CallSettings.html.
    * @param {function} callback The callback function.
    * @param {?error} callback.error An error returned while making this request.
    * @param {Cluster[]} callback.clusters List of all
@@ -555,17 +563,21 @@ Please use the format 'my-instance' or '${bigtable.projectName}/instances/my-ins
    * @example <caption>include:samples/document-snippets/instance.js</caption>
    * region_tag:bigtable_get_clusters
    */
-  getClusters(gaxOptions, callback) {
-    if (is.function(gaxOptions)) {
-      callback = gaxOptions;
-      gaxOptions = {};
-    }
-
+  getClusters(
+    gaxOptionsOrCallback?: CallOptions | GetClustersCallback,
+    callback?: GetClustersCallback
+  ): Promise<GetClustersResponse> | void {
+    const gaxOptions =
+      typeof gaxOptionsOrCallback === 'object' ? gaxOptionsOrCallback : {};
+    callback =
+      typeof gaxOptionsOrCallback === 'function'
+        ? gaxOptionsOrCallback
+        : callback;
     const reqOpts = {
       parent: this.name,
     };
 
-    this.bigtable.request(
+    this.bigtable.request<google.bigtable.admin.v2.IListClustersResponse>(
       {
         client: 'BigtableInstanceAdminClient',
         method: 'listClusters',
@@ -574,17 +586,17 @@ Please use the format 'my-instance' or '${bigtable.projectName}/instances/my-ins
       },
       (err, resp) => {
         if (err) {
-          callback(err);
+          callback!(err);
           return;
         }
 
-        const clusters = resp.clusters.map(clusterObj => {
-          const cluster = this.cluster(clusterObj.name.split('/').pop());
-          cluster.metadata = clusterObj;
+        const clusters = resp!.clusters!.map(clusterObj => {
+          const cluster = this.cluster(clusterObj!.name!.split('/').pop());
+          cluster.metadata = clusterObj as Metadata;
           return cluster;
         });
 
-        callback(null, clusters, resp);
+        callback!(null, clusters, resp!);
       }
     );
   }
