@@ -61,6 +61,7 @@ const streamEvents = require('stream-events');
 
 const PKG = require('../../package.json');
 const v2 = require('./v2');
+import {google} from '../proto/bigtable';
 const {grpc} = new gax.GrpcClient();
 
 export interface RequestConfig {
@@ -100,6 +101,7 @@ export interface AppProfileOptions extends OptionInterface {
 }
 export type CreateAppProfileCallback = GenericCallback<AppProfile>;
 export type CreateAppProfileResponse = [AppProfile];
+export type EmptyResponse = GenericCallback<google.protobuf.IEmpty>;
 /**
  * @typedef {object} ClientConfig
  * @property {string} [apiEndpoint] Override the default API endpoint used

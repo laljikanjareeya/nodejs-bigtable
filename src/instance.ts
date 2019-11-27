@@ -39,9 +39,12 @@ import {
   CreateAppProfileCallback,
   CreateAppProfileResponse,
   Bigtable,
+  RequestCallback,
+  EmptyResponse,
 } from '.';
 import {google} from '../proto/bigtable';
 
+export type DeleteInstanceCallback = RequestCallback<google.protobuf.Empty>;
 /**
  * Create an Instance object to interact with a Cloud Bigtable instance.
  *
@@ -402,11 +405,14 @@ Please use the format 'my-instance' or '${bigtable.projectName}/instances/my-ins
     return new Cluster(this, id);
   }
 
+  delete(gaxOptions?: CallOptions): Promise<EmptyResponse>;
+  delete(callback: DeleteInstanceCallback): void;
+  delete(gaxOptions: CallOptions, callback: DeleteInstanceCallback): void;
   /**
    * Delete the instance.
    *
    * @param {object} [gaxOptions] Request configuration options, outlined here:
-   *     https://googleapis.github.io/gax-nodejs/CallSettings.html.
+   *     https://googleapis.github.io/gax-nodejs/classes/CallSettings.html.
    * @param {function} [callback] The callback function.
    * @param {?error} callback.err An error returned while making this
    *     request.
@@ -415,11 +421,16 @@ Please use the format 'my-instance' or '${bigtable.projectName}/instances/my-ins
    * @example <caption>include:samples/document-snippets/instance.js</caption>
    * region_tag:bigtable_del_instance
    */
-  delete(gaxOptions, callback) {
-    if (is.fn(gaxOptions)) {
-      callback = gaxOptions;
-      gaxOptions = {};
-    }
+  delete(
+    gaxOptionsOrcallback?: CallOptions | DeleteInstanceCallback,
+    callback?: DeleteInstanceCallback
+  ): Promise<EmptyResponse> | void {
+    const gaxOptions =
+      typeof gaxOptionsOrcallback === 'object' ? gaxOptionsOrcallback : {};
+    callback =
+      typeof gaxOptionsOrcallback === 'function'
+        ? gaxOptionsOrcallback
+        : callback;
 
     this.bigtable.request(
       {
@@ -430,7 +441,7 @@ Please use the format 'my-instance' or '${bigtable.projectName}/instances/my-ins
         },
         gaxOpts: gaxOptions,
       },
-      callback
+      callback!
     );
   }
 
