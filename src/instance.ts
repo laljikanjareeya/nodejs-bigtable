@@ -32,6 +32,9 @@ import {
   Table,
   TestIamPermissionsCallback,
   TestIamPermissionsResponse,
+  GetTablesCallback,
+  GetTablesResponse,
+  GetTablesOption,
 } from './table';
 import {CallOptions} from 'google-gax';
 import {
@@ -589,12 +592,16 @@ Please use the format 'my-instance' or '${bigtable.projectName}/instances/my-ins
     );
   }
 
-  getIamPolicy(options?): Promise<[Policy]>;
-  getIamPolicy(options, callback): void;
+  getIamPolicy(options?: GetIamPolicyOptions): Promise<GetIamPolicyResponse>;
+  getIamPolicy(callback: GetIamPolicyCallback): void;
+  getIamPolicy(
+    options: GetIamPolicyOptions,
+    callback: GetIamPolicyCallback
+  ): void;
   /**
    * @param {object} [options] Configuration object.
    * @param {object} [options.gaxOptions] Request configuration options, outlined
-   *     here: https://googleapis.github.io/gax-nodejs/CallSettings.html.
+   *     here: https://googleapis.github.io/gax-nodejs/classes/CallSettings.html.
    * @param {number} [options.requestedPolicyVersion] The policy format version
    *     to be returned. Valid values are 0, 1, and 3. Requests specifying an
    *     invalid value will be rejected. Requests for policies with any
@@ -629,7 +636,7 @@ Please use the format 'my-instance' or '${bigtable.projectName}/instances/my-ins
       };
     }
 
-    this.bigtable.request(
+    this.bigtable.request<Policy>(
       {
         client: 'BigtableInstanceAdminClient',
         method: 'getIamPolicy',
@@ -684,18 +691,15 @@ Please use the format 'my-instance' or '${bigtable.projectName}/instances/my-ins
     );
   }
 
+  getTables(options?: GetTablesOption): Promise<GetTablesResponse>;
+  getTables(callback: GetTablesCallback): void;
+  getTables(options: GetTablesOption, callback: GetTablesCallback): void;
   /**
    * Get Table objects for all the tables in your Cloud Bigtable instance.
    *
    * @param {object} [options] Query object.
-   * @param {boolean} [options.autoPaginate=true] Have pagination handled
-   *     automatically.
-   * @param {object} [options.gaxOptions] Request configuration options, outlined
-   *     here: https://googleapis.github.io/gax-nodejs/global.html#CallOptions.
-   * @param {number} [options.maxApiCalls] Maximum number of API calls to make.
-   * @param {number} [options.maxResults] Maximum number of items to return.
-   * @param {string} [options.pageToken] A previously-returned page token
-   *     representing part of a larger set of results to view.
+   * @param {object} [options.gaxOptions] Request configuration options, outlined here:
+   *     https://googleapis.github.io/gax-nodejs/classes/CallSettings.html.
    * @param {string} [options.view] View over the table's fields. Possible options
    *     are 'name', 'schema' or 'full'. Default: 'name'.
    * @param {function} callback The callback function.
@@ -707,20 +711,23 @@ Please use the format 'my-instance' or '${bigtable.projectName}/instances/my-ins
    * @example <caption>include:samples/document-snippets/instance.js</caption>
    * region_tag:bigtable_get_tables
    */
-  getTables(options, callback) {
-    if (is.function(options)) {
-      callback = options;
-      options = {};
-    }
+  getTables(
+    optionsOrCallback?: GetTablesOption | GetTablesCallback,
+    callback?: GetTablesCallback
+  ): Promise<GetTablesResponse> | void {
+    const options =
+      typeof optionsOrCallback === 'object' ? optionsOrCallback : {};
+    callback =
+      typeof optionsOrCallback === 'function' ? optionsOrCallback : callback;
 
     const reqOpts = Object.assign({}, options, {
       parent: this.name,
-      view: Table.VIEWS[options.view || 'unspecified'],
+      view: (Table.VIEWS as any)[options.view || 'unspecified'],
     });
 
     delete reqOpts.gaxOptions;
 
-    this.bigtable.request(
+    this.bigtable.request<Table[], google.bigtable.admin.v2.ITable[]>(
       {
         client: 'BigtableTableAdminClient',
         method: 'listTables',
@@ -736,7 +743,7 @@ Please use the format 'my-instance' or '${bigtable.projectName}/instances/my-ins
           });
         }
 
-        callback(...args);
+        callback!(...args);
       }
     );
   }
@@ -781,7 +788,7 @@ Please use the format 'my-instance' or '${bigtable.projectName}/instances/my-ins
       policy,
     };
 
-    this.bigtable.request(
+    this.bigtable.request<Policy>(
       {
         client: 'BigtableInstanceAdminClient',
         method: 'setIamPolicy',
