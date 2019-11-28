@@ -30,6 +30,9 @@ import {Mutation} from './mutation';
 import {Row} from './row';
 import {ChunkTransformer} from './chunktransformer';
 import {CallOptions} from 'google-gax';
+import {Bigtable, RequestCallback, OptionInterface} from '.';
+import {Instance} from './instance';
+import {google} from '../proto/bigtable';
 
 // See protos/google/rpc/code.proto
 // (4=DEADLINE_EXCEEDED, 10=ABORTED, 14=UNAVAILABLE)
@@ -159,17 +162,17 @@ export type TestIamPermissionsResponse = [string[]];
  * const table = instance.table('prezzy');
  */
 export class Table {
-  bigtable;
-  instance;
-  name;
-  id;
-  metadata;
-  maxRetries;
-  constructor(instance, id) {
+  bigtable: Bigtable;
+  instance: Instance;
+  name: string;
+  id: string;
+  metadata!: google.bigtable.admin.v2.ITable;
+  maxRetries!: number;
+  constructor(instance: Instance, id: string) {
     this.bigtable = instance.bigtable;
     this.instance = instance;
 
-    let name;
+    let name: string;
 
     if (id.includes('/')) {
       if (id.startsWith(`${instance.name}/tables/`)) {
@@ -183,7 +186,7 @@ Please use the format 'prezzy' or '${instance.name}/tables/prezzy'.`);
     }
 
     this.name = name;
-    this.id = name.split('/').pop();
+    this.id = name.split('/').pop()!;
   }
 
   /**
@@ -193,9 +196,9 @@ Please use the format 'prezzy' or '${instance.name}/tables/prezzy'.`);
    *
    * @param {object} policy
    */
-  static decodePolicyEtag(policy): Policy {
-    policy.etag = policy.etag.toString('ascii');
-    return policy as Policy;
+  static decodePolicyEtag(policy: Policy): Policy {
+    policy.etag = ((policy.etag as {}) as Buffer)!.toString('ascii');
+    return policy;
   }
 
   /**
@@ -214,7 +217,7 @@ Please use the format 'prezzy' or '${instance.name}/tables/prezzy'.`);
    * //
    * 'projects/my-project/zones/my-zone/instances/my-instance/tables/my-table'
    */
-  static formatName_(instanceName, id) {
+  static formatName_(instanceName: string, id: string) {
     if (id.includes('/')) {
       return id;
     }
@@ -244,7 +247,7 @@ Please use the format 'prezzy' or '${instance.name}/tables/prezzy'.`);
    * //   }
    * // }
    */
-  static createPrefixRange(start): PrefixRange {
+  static createPrefixRange(start: string): PrefixRange {
     const prefix = start.replace(new RegExp('[\xff]+$'), '');
     let endKey = '';
     if (prefix) {
