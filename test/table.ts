@@ -26,6 +26,8 @@ import {Mutation} from '../src/mutation.js';
 import {Row} from '../src/row.js';
 import * as tblTypes from '../src/table';
 import * as ds from '../src/decorateStatus.js';
+import {ServiceError} from '@grpc/grpc-js';
+import {RequestConfig, RequestCallback} from '../src/index.js';
 
 const sandbox = sinon.createSandbox();
 const noop = () => {};
@@ -343,11 +345,11 @@ describe('Bigtable/Table', function() {
     });
 
     it('should return an error to the callback', function(done) {
-      const error = new Error('err');
+      const error = new Error('err') as ServiceError;
       const response = {};
 
-      table.bigtable.request = function(config, callback) {
-        callback(error, response);
+      table.bigtable.request = <T, R = void>(config, callback) => {
+        callback!(error, response);
       };
 
       table.createFamily(COLUMN_ID, function(err, family, apiResponse) {
@@ -364,8 +366,8 @@ describe('Bigtable/Table', function() {
       };
       const fakeFamily = {} as Family;
 
-      table.bigtable.request = function(config, callback) {
-        callback(null, response);
+      table.bigtable.request = <T, R = void>(config, callback) => {
+        callback!(null, response);
       };
 
       sandbox.stub(table, 'family').callsFake(id => {
@@ -1193,7 +1195,7 @@ describe('Bigtable/Table', function() {
 
         assert.deepStrictEqual(config.gaxOpts, {});
 
-        callback(); // done()
+        callback!(); // done()
       };
 
       table.delete(done);
@@ -1220,7 +1222,7 @@ describe('Bigtable/Table', function() {
         assert.strictEqual(config.method, 'dropRowRange');
         assert.strictEqual(config.reqOpts.name, TABLE_NAME);
         assert.deepStrictEqual(config.gaxOpts, {});
-        callback();
+        callback!();
       };
 
       table.deleteRows(prefix, done);
@@ -1462,7 +1464,7 @@ describe('Bigtable/Table', function() {
         assert.strictEqual(config.method, 'getIamPolicy');
         assert.strictEqual(config.reqOpts.resource, table.name);
         assert.strictEqual(config.reqOpts.requestedPolicyVersion, undefined);
-        assert.strictEqual(config.gaxOpt, undefined);
+        assert.strictEqual((config as any).gaxOpt, undefined);
         done();
       };
       table.getIamPolicy(assert.ifError);
@@ -1485,9 +1487,9 @@ describe('Bigtable/Table', function() {
     });
 
     it('should return error', done => {
-      const error = new Error('error');
+      const error = new Error('error') as ServiceError;
       table.bigtable.request = (config, callback) => {
-        callback(error);
+        callback!(error);
       };
       table.getIamPolicy(err => {
         assert.strictEqual(err, error);
@@ -1496,8 +1498,8 @@ describe('Bigtable/Table', function() {
     });
 
     it('should call decodePolicyEtag', () => {
-      table.bigtable.request = (config, callback) => {
-        callback(null, {});
+      table.bigtable.request = <T, R = void>(config, callback) => {
+        callback!(null, {});
       };
       const spy = sandbox.stub(Table, 'decodePolicyEtag');
       table.getIamPolicy(assert.ifError);
@@ -1621,10 +1623,10 @@ describe('Bigtable/Table', function() {
 
   describe('waitForReplication', () => {
     it('should return the error to the callback', function(done) {
-      const error = new Error('err');
+      const error = new Error('err') as ServiceError;
 
       table.bigtable.request = function(config, callback) {
-        callback(error);
+        callback!(error);
       };
 
       table.waitForReplication(function(err) {
@@ -1729,12 +1731,12 @@ describe('Bigtable/Table', function() {
       });
 
       it('should return false after 10 min if inconsistency repeats', done => {
-        table.bigtable.request = function(config, callback) {
+        table.bigtable.request = <T, R = void>(config, callback) => {
           if (config.method === 'generateConsistencyToken') {
-            return callback(null, {consistencyToken: 'sample-token12345'});
+            return callback!(null, {consistencyToken: 'sample-token12345'});
           }
           if (config.method === 'checkConsistency') {
-            return callback(null, {consistent: false});
+            return callback!(null, {consistent: false});
           }
         };
 
@@ -1785,8 +1787,8 @@ describe('Bigtable/Table', function() {
         consistencyToken: cToken,
       };
 
-      table.bigtable.request = function(config, callback) {
-        callback(null, response);
+      table.bigtable.request = <T, R = void>(config, callback) => {
+        callback!(null, response);
       };
 
       table.generateConsistencyToken(function(err, token) {
@@ -1797,9 +1799,9 @@ describe('Bigtable/Table', function() {
     });
 
     it('should return error', function(done) {
-      const error = new Error('err');
+      const error = new Error('err') as ServiceError;
       table.bigtable.request = function(config, callback) {
-        callback(error);
+        callback!(error);
       };
 
       table.generateConsistencyToken(function(err) {
@@ -1825,11 +1827,11 @@ describe('Bigtable/Table', function() {
     });
 
     describe('error', function() {
-      const error = new Error('err');
+      const error = new Error('err') as ServiceError;
 
       it('should return the error to the callback', function(done) {
         table.bigtable.request = function(config, callback) {
-          callback(error);
+          callback!(error);
         };
 
         table.checkConsistency('cToken', function(err) {
@@ -1841,8 +1843,8 @@ describe('Bigtable/Table', function() {
 
     describe('success', function() {
       it('should return true if consistent', function(done) {
-        table.bigtable.request = function(config, callback) {
-          callback(null, {consistent: true});
+        table.bigtable.request = <T, R = void>(config, callback) => {
+          callback!(null, {consistent: true});
         };
 
         table.checkConsistency('', function(err, resp) {
@@ -1853,8 +1855,8 @@ describe('Bigtable/Table', function() {
       });
 
       it('should return false if not consistent', function(done) {
-        table.bigtable.request = function(config, callback) {
-          callback(null, {consistent: false});
+        table.bigtable.request = <T, R = void>(config, callback) => {
+          callback!(null, {consistent: false});
         };
         table.checkConsistency('', function(err, resp) {
           assert.ifError(err);
@@ -1923,8 +1925,8 @@ describe('Bigtable/Table', function() {
     it('should update the metadata', function(done) {
       const response = {};
 
-      table.bigtable.request = function(config, callback) {
-        callback(null, response);
+      table.bigtable.request = <T, R = void>(config, callback) => {
+        callback!(null, response);
       };
 
       table.getMetadata(function(err, metadata) {
@@ -1938,8 +1940,8 @@ describe('Bigtable/Table', function() {
     it('should execute callback with original arguments', function(done) {
       const args = [{}, {}, {}];
 
-      table.bigtable.request = function(config, callback) {
-        callback.apply(null, args);
+      table.bigtable.request = <T, R = void>(config, callback) => {
+        callback!.apply(null, args);
       };
 
       table.getMetadata(function() {
@@ -2588,7 +2590,7 @@ describe('Bigtable/Table', function() {
         assert.strictEqual(config.method, 'setIamPolicy');
         assert.strictEqual(config.reqOpts.resource, table.name);
         assert.strictEqual(config.reqOpts.policy, policy);
-        assert.strictEqual(config.gaxOpt, undefined);
+        assert.strictEqual((config as any).gaxOpt, undefined);
         done();
       };
       table.setIamPolicy(policy, assert.ifError);
@@ -2639,9 +2641,9 @@ describe('Bigtable/Table', function() {
     });
 
     it('should return error', done => {
-      const error = new Error('error');
+      const error = new Error('error') as ServiceError;
       table.bigtable.request = (config, callback) => {
-        callback(error);
+        callback!(error);
       };
       table.setIamPolicy(policy, err => {
         assert.strictEqual(err, error);
@@ -2650,8 +2652,8 @@ describe('Bigtable/Table', function() {
     });
 
     it('should call decodePolicyEtag', () => {
-      table.bigtable.request = (config, callback) => {
-        callback(null, {});
+      table.bigtable.request = <T, R = void>(config, callback) => {
+        callback!(null, {});
       };
       const spy = sandbox.stub(Table, 'decodePolicyEtag');
       table.setIamPolicy(policy, assert.ifError);
@@ -2667,7 +2669,7 @@ describe('Bigtable/Table', function() {
         assert.strictEqual(config.method, 'testIamPermissions');
         assert.strictEqual(config.reqOpts.resource, table.name);
         assert.deepStrictEqual(config.reqOpts.permissions, [permissions]);
-        assert.strictEqual(config.gaxOpt, undefined);
+        assert.strictEqual((config as any).gaxOpt, undefined);
         done();
       };
       table.testIamPermissions(permissions, assert.ifError);
@@ -2693,8 +2695,8 @@ describe('Bigtable/Table', function() {
 
     it('should unpack permissions from resp object', done => {
       const testPermissions = [`bigtable.tables.get`, `bigtable.tables.list`];
-      table.bigtable.request = (config, callback) => {
-        callback(null, {permissions: testPermissions});
+      table.bigtable.request = <T, R = void>(config, callback) => {
+        callback!(null, {permissions: testPermissions});
       };
       table.testIamPermissions(testPermissions, (err, permissions) => {
         assert.ifError(err);
@@ -2706,9 +2708,9 @@ describe('Bigtable/Table', function() {
 
     it('should return error', done => {
       const permission = 'bigtable.tables.get';
-      const error = new Error('error');
+      const error = new Error('error') as ServiceError;
       table.bigtable.request = (config, callback) => {
-        callback(error);
+        callback!(error);
       };
       table.testIamPermissions(permission, (err, resp) => {
         assert.strictEqual(err, error);
@@ -2720,8 +2722,8 @@ describe('Bigtable/Table', function() {
   describe('decodePolicyEtag', () => {
     it('should return policy with etag decoded to string', () => {
       const etagString = 'ABC';
-      const policy = {
-        etag: Buffer.from(etagString),
+      const policy: tblTypes.Policy = {
+        etag: (Buffer.from(etagString) as {}) as string,
       };
       assert.strictEqual(Table.decodePolicyEtag(policy).etag, etagString);
     });
@@ -2735,7 +2737,7 @@ describe('Bigtable/Table', function() {
         assert.strictEqual(config.reqOpts.name, TABLE_NAME);
         assert.strictEqual(config.reqOpts.deleteAllDataFromTable, true);
         assert.deepStrictEqual(config.gaxOpts, {});
-        callback();
+        callback!();
       };
 
       table.truncate(done);
