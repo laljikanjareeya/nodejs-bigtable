@@ -18,9 +18,18 @@ import {promisifyAll} from '@google-cloud/promisify';
 import * as is from 'is';
 import snakeCase = require('lodash.snakecase');
 import {Cluster} from './cluster';
-import {Bigtable} from '.';
+import {Bigtable, RequestCallback} from '.';
 import {Instance} from './instance';
+import {google} from '../proto/bigtable';
 
+export type GetAppProfilesCallback = RequestCallback<
+  AppProfile[],
+  google.bigtable.admin.v2.IAppProfile[]
+>;
+export type GetAppProfilesResponse = [
+  AppProfile[],
+  google.bigtable.admin.v2.IAppProfile[]
+];
 /**
  * Create an app profile object to interact with your app profile.
  *
