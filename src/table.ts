@@ -147,7 +147,12 @@ export interface TestIamPermissionsCallback {
  * @property {string[]} 0 A subset of permissions that the caller is allowed.
  */
 export type TestIamPermissionsResponse = [string[]];
-
+export interface CreateTableOptions extends OptionInterface {}
+export type CreateTableResponse = [Table, google.bigtable.admin.v2.ITable];
+export type CreateTableCallback = RequestCallback<
+  Table,
+  google.bigtable.admin.v2.ITable
+>;
 /**
  * Create a Table object to interact with a Cloud Bigtable table.
  *
@@ -265,6 +270,9 @@ Please use the format 'prezzy' or '${instance.name}/tables/prezzy'.`);
     };
   }
 
+  create(options?: CreateTableOptions): Promise<CreateTableResponse>;
+  create(callback: CreateTableCallback): void;
+  create(options: CreateTableOptions, callback: CreateTableCallback): void;
   /**
    * Create a table.
    *
@@ -279,12 +287,14 @@ Please use the format 'prezzy' or '${instance.name}/tables/prezzy'.`);
    * @example <caption>include:samples/document-snippets/table.js</caption>
    * region_tag:bigtable_create_table
    */
-  create(options, callback?) {
-    if (is.fn(options)) {
-      callback = options;
-      options = {};
-    }
-
+  create(
+    optionsOrCallback?: CreateTableOptions | CreateTableCallback,
+    callback?: CreateTableCallback
+  ): Promise<CreateTableResponse> | void {
+    const options =
+      typeof optionsOrCallback === 'object' ? optionsOrCallback : {};
+    callback =
+      typeof optionsOrCallback === 'function' ? optionsOrCallback : callback;
     this.instance.createTable(this.id, options, callback);
   }
 
