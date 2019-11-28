@@ -34,6 +34,13 @@ import {
   TestIamPermissionsResponse,
 } from './table';
 import {CallOptions} from 'google-gax';
+import {
+  AppProfileOptions,
+  CreateAppProfileCallback,
+  CreateAppProfileResponse,
+  Bigtable,
+} from '.';
+import {google} from '../proto/bigtable';
 
 /**
  * Create an Instance object to interact with a Cloud Bigtable instance.
@@ -50,15 +57,15 @@ import {CallOptions} from 'google-gax';
  */
 
 export class Instance {
-  bigtable;
-  id;
-  name;
-  metadata;
-  getTablesStream;
-  constructor(bigtable, id) {
+  bigtable: Bigtable;
+  id: string;
+  name: string;
+  metadata!: google.bigtable.admin.v2.IInstance;
+  getTablesStream!: Function;
+  constructor(bigtable: Bigtable, id: string) {
     this.bigtable = bigtable;
 
-    let name;
+    let name: string;
     if (id.includes('/')) {
       if (id.startsWith(`${bigtable.projectName}/instances/`)) {
         name = id;
@@ -70,7 +77,7 @@ Please use the format 'my-instance' or '${bigtable.projectName}/instances/my-ins
       name = `${bigtable.projectName}/instances/${id}`;
     }
 
-    this.id = name.split('/').pop();
+    this.id = name.split('/').pop()!;
     this.name = name;
   }
 
@@ -137,6 +144,15 @@ Please use the format 'my-instance' or '${bigtable.projectName}/instances/my-ins
     this.bigtable.createInstance(this.id, options, callback);
   }
 
+  createAppProfile(
+    id: string,
+    options: AppProfileOptions
+  ): Promise<CreateAppProfileResponse>;
+  createAppProfile(
+    id: string,
+    options: AppProfileOptions,
+    callback: CreateAppProfileCallback
+  ): void;
   /**
    * Create an app profile.
    *
@@ -165,11 +181,17 @@ Please use the format 'my-instance' or '${bigtable.projectName}/instances/my-ins
    * @example <caption>include:samples/document-snippets/instance.js</caption>
    * region_tag:bigtable_create_app_profile
    */
-  createAppProfile(id, options, callback) {
-    if (is.function(options)) {
-      callback = options;
-      options = {};
-    }
+  createAppProfile(
+    id: string,
+    optionsOrCallback: AppProfileOptions | CreateAppProfileCallback,
+    callback?: CreateAppProfileCallback
+  ): Promise<CreateAppProfileResponse> | void {
+    const options =
+      typeof optionsOrCallback === 'object'
+        ? optionsOrCallback
+        : ({} as AppProfileOptions);
+    callback =
+      typeof optionsOrCallback === 'function' ? optionsOrCallback : callback;
     if (!options.routing) {
       throw new Error('An app profile must contain a routing policy.');
     }
@@ -186,7 +208,7 @@ Please use the format 'my-instance' or '${bigtable.projectName}/instances/my-ins
       reqOpts.ignoreWarnings = options.ignoreWarnings;
     }
 
-    this.bigtable.request(
+    this.bigtable.request<AppProfile>(
       {
         client: 'BigtableInstanceAdminClient',
         method: 'createAppProfile',
@@ -198,7 +220,7 @@ Please use the format 'my-instance' or '${bigtable.projectName}/instances/my-ins
           args.splice(1, 0, this.appProfile(id));
         }
 
-        callback(...args);
+        callback!(...args);
       }
     );
   }
