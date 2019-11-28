@@ -340,7 +340,11 @@ describe('Bigtable/Table', function() {
         done();
       };
 
-      table.createFamily(COLUMN_ID, {rule}, assert.ifError);
+      table.createFamily(
+        COLUMN_ID,
+        {rule} as tblTypes.CreateFamilyOptions,
+        assert.ifError
+      );
     });
 
     it('should return an error to the callback', function(done) {
@@ -377,7 +381,7 @@ describe('Bigtable/Table', function() {
       table.createFamily(FAMILY_ID, function(err, family, apiResponse) {
         assert.ifError(err);
         assert.strictEqual(family, fakeFamily);
-        assert.strictEqual(family.metadata, response);
+        assert.strictEqual(family!.metadata, response);
         assert.strictEqual(apiResponse, response);
         done();
       });
