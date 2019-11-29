@@ -26,20 +26,32 @@ import * as through from 'through2';
 
 import {Family} from './family';
 import {Filter} from './filter';
-import {Mutation} from './mutation';
+import {Mutation, Data} from './mutation';
 import {Row} from './row';
 import {ChunkTransformer} from './chunktransformer';
 import {CallOptions} from 'google-gax';
-import {Bigtable, RequestCallback, OptionInterface} from '.';
+import {Bigtable, OptionInterface} from '.';
 import {Instance} from './instance';
 import {google} from '../proto/bigtable';
+import {ServiceError} from '@grpc/grpc-js';
 
 // See protos/google/rpc/code.proto
 // (4=DEADLINE_EXCEEDED, 10=ABORTED, 14=UNAVAILABLE)
 const RETRYABLE_STATUS_CODES = new Set([4, 10, 14]);
 // (1=CANCELLED)
 const IGNORED_STATUS_CODES = new Set([1]);
-
+export interface CreateReadStreamOptions extends OptionInterface {
+  decode?: boolean;
+  encoding?: boolean;
+  end?: string;
+  filter?: Filter;
+  keys?: string[];
+  limit?: number;
+  prefix?: string;
+  prefixes?: string[];
+  ranges?: PrefixRange[];
+  start?: string;
+}
 /**
  * @typedef {object} Policy
  * @property {number} [version] Specifies the format of the policy.
@@ -392,16 +404,16 @@ Please use the format 'prezzy' or '${instance.name}/tables/prezzy'.`);
    * @example <caption>include:samples/document-snippets/table.js</caption>
    * region_tag:bigtable_table_readstream
    */
-  createReadStream(options?) {
+  createReadStream(options?: CreateReadStreamOptions) {
     options = options || {};
     const maxRetries = is.number(this.maxRetries) ? this.maxRetries : 3;
 
-    let activeRequestStream;
+    let activeRequestStream: any;
 
-    let rowKeys;
+    let rowKeys: string[] | null;
     const ranges = options.ranges || [];
-    let filter;
-    let rowsLimit;
+    let filter: Filter;
+    let rowsLimit: number;
     let rowsRead = 0;
     let numRequestsMade = 0;
 
@@ -412,8 +424,8 @@ Please use the format 'prezzy' or '${instance.name}/tables/prezzy'.`);
         );
       }
       ranges.push({
-        start: options.start,
-        end: options.end,
+        start: options.start!,
+        end: options.end as any,
       });
     }
 
@@ -458,11 +470,11 @@ Please use the format 'prezzy' or '${instance.name}/tables/prezzy'.`);
       end();
     };
 
-    let chunkTransformer;
+    let chunkTransformer: ChunkTransformer;
 
     const makeNewRequest = () => {
       const lastRowKey = chunkTransformer ? chunkTransformer.lastRowKey : '';
-      chunkTransformer = new ChunkTransformer({decode: options.decode} as any);
+      chunkTransformer = new ChunkTransformer({decode: options!.decode} as any);
 
       const reqOpts: any = {
         tableName: this.name,
@@ -474,39 +486,43 @@ Please use the format 'prezzy' or '${instance.name}/tables/prezzy'.`);
       };
 
       if (lastRowKey) {
-        const lessThan = (lhs, rhs) => {
+        const lessThan = (lhs: Buffer | Data, rhs: Buffer | Data) => {
           const lhsBytes = Mutation.convertToBytes(lhs);
           const rhsBytes = Mutation.convertToBytes(rhs);
           return (lhsBytes as Buffer).compare(rhsBytes as Uint8Array) === -1;
         };
-        const greaterThan = (lhs, rhs) => lessThan(rhs, lhs);
-        const greaterThanOrEqualTo = (lhs, rhs) => !lessThan(rhs, lhs);
+        const greaterThan = (lhs: Buffer | Data, rhs: Buffer | Data) =>
+          lessThan(rhs, lhs);
+        const greaterThanOrEqualTo = (lhs: Buffer | Data, rhs: Buffer | Data) =>
+          !lessThan(rhs, lhs);
 
         if (ranges.length === 0) {
           ranges.push({
             start: {
               value: lastRowKey,
               inclusive: false,
-            },
-          });
+            } as any,
+          } as PrefixRange);
         } else {
           // Readjust and/or remove ranges based on previous valid row reads.
 
           // Iterate backward since items may need to be removed.
           for (let index = ranges.length - 1; index >= 0; index--) {
             const range = ranges[index];
-            const startValue = is.object(range.start)
-              ? range.start.value
+            const startValue: Buffer | Data = is.object(range.start)
+              ? (range.start as any).value
               : range.start;
             const endValue = is.object(range.end) ? range.end.value : range.end;
             const isWithinStart =
-              !startValue || greaterThanOrEqualTo(startValue, lastRowKey);
-            const isWithinEnd = !endValue || lessThan(lastRowKey, endValue);
+              !startValue ||
+              greaterThanOrEqualTo(startValue, lastRowKey as string);
+            const isWithinEnd =
+              !endValue || lessThan(lastRowKey as string, endValue as string);
             if (isWithinStart) {
               if (isWithinEnd) {
                 // The lastRowKey is within this range, adjust the start
                 // value.
-                range.start = {
+                (range as any).start = {
                   value: lastRowKey,
                   inclusive: false,
                 };
@@ -520,7 +536,9 @@ Please use the format 'prezzy' or '${instance.name}/tables/prezzy'.`);
 
         // Remove rowKeys already read.
         if (rowKeys) {
-          rowKeys = rowKeys.filter(rowKey => greaterThan(rowKey, lastRowKey));
+          rowKeys = rowKeys.filter(rowKey =>
+            greaterThan(rowKey, lastRowKey as any)
+          );
           if (rowKeys.length === 0) {
             rowKeys = null;
           }
@@ -552,7 +570,7 @@ Please use the format 'prezzy' or '${instance.name}/tables/prezzy'.`);
         client: 'BigtableClient',
         method: 'readRows',
         reqOpts,
-        gaxOpts: options.gaxOptions,
+        gaxOpts: options!.gaxOptions,
         retryOpts,
       });
 
@@ -578,7 +596,7 @@ Please use the format 'prezzy' or '${instance.name}/tables/prezzy'.`);
         }),
       ]);
 
-      rowStream.on('error', error => {
+      rowStream.on('error', (error: ServiceError) => {
         if (IGNORED_STATUS_CODES.has(error.code)) {
           // We ignore the `cancelled` "error", since we are the ones who cause
           // it when the user calls `.abort()`.
