@@ -36,10 +36,13 @@ import {Mutation} from './mutation';
 import {Row} from './row';
 import {ChunkTransformer} from './chunktransformer';
 import {CallOptions} from 'google-gax';
-import {Bigtable, RequestCallback, OptionInterface} from '.';
+import {Bigtable} from '.';
 import {Instance} from './instance';
 import {google} from '../proto/bigtable';
+import {GenericCallback} from './cluster';
 
+export type DeleteTableRowsCallback = GenericCallback<google.protobuf.Empty>;
+export type DeleteTableRowsResponse = [google.protobuf.Empty];
 // See protos/google/rpc/code.proto
 // (4=DEADLINE_EXCEEDED, 10=ABORTED, 14=UNAVAILABLE)
 const RETRYABLE_STATUS_CODES = new Set([4, 10, 14]);
@@ -669,6 +672,16 @@ Please use the format 'prezzy' or '${instance.name}/tables/prezzy'.`);
     );
   }
 
+  deleteRows(
+    prefix: string,
+    gaxOptionsOrCallback?: CallOptions
+  ): Promise<DeleteTableRowsResponse>;
+  deleteRows(prefix: string, callback: DeleteTableRowsCallback): void;
+  deleteRows(
+    prefix: string,
+    gaxOptionsOrCallback: CallOptions,
+    callback: DeleteTableRowsCallback
+  ): void;
   /**
    * Delete all rows in the table, optionally corresponding to a particular
    * prefix.
@@ -685,11 +698,17 @@ Please use the format 'prezzy' or '${instance.name}/tables/prezzy'.`);
    * @example <caption>include:samples/document-snippets/table.js</caption>
    * region_tag:bigtable_del_rows
    */
-  deleteRows(prefix, gaxOptions, callback?) {
-    if (is.function(gaxOptions)) {
-      callback = gaxOptions;
-      gaxOptions = {};
-    }
+  deleteRows(
+    prefix: string,
+    gaxOptionsOrCallback?: CallOptions | DeleteTableRowsCallback,
+    callback?: DeleteTableRowsCallback
+  ): Promise<DeleteTableRowsResponse> | void {
+    const gaxOptions =
+      typeof gaxOptionsOrCallback === 'object' ? gaxOptionsOrCallback : {};
+    callback =
+      typeof gaxOptionsOrCallback === 'function'
+        ? gaxOptionsOrCallback
+        : callback;
 
     if (!prefix || is.fn(prefix)) {
       throw new Error('A prefix is required for deleteRows.');
