@@ -36,10 +36,13 @@ import {Mutation} from './mutation';
 import {Row} from './row';
 import {ChunkTransformer} from './chunktransformer';
 import {CallOptions} from 'google-gax';
-import {Bigtable, RequestCallback, OptionInterface} from '.';
+import {Bigtable} from '.';
 import {Instance} from './instance';
 import {google} from '../proto/bigtable';
+import {GenericCallback} from './cluster';
 
+export type DeleteTableCallback = GenericCallback<google.protobuf.Empty>;
+export type DeleteTableReposne = [google.protobuf.Empty];
 // See protos/google/rpc/code.proto
 // (4=DEADLINE_EXCEEDED, 10=ABORTED, 14=UNAVAILABLE)
 const RETRYABLE_STATUS_CODES = new Set([4, 10, 14]);
@@ -637,11 +640,14 @@ Please use the format 'prezzy' or '${instance.name}/tables/prezzy'.`);
     return userStream;
   }
 
+  delete(gaxOptions?: CallOptions): Promise<DeleteTableReposne>;
+  delete(callback: DeleteTableCallback): void;
+  delete(gaxOptions: CallOptions, callback: DeleteTableCallback): void;
   /**
    * Delete the table.
    *
    * @param {object} [gaxOptions] Request configuration options, outlined
-   *     here: https://googleapis.github.io/gax-nodejs/CallSettings.html.
+   *     here: https://googleapis.github.io/gax-nodejs/classes/CallSettings.html.
    * @param {function} [callback] The callback function.
    * @param {?error} callback.err An error returned while making this
    *     request.
@@ -650,11 +656,16 @@ Please use the format 'prezzy' or '${instance.name}/tables/prezzy'.`);
    * @example <caption>include:samples/document-snippets/table.js</caption>
    * region_tag:bigtable_del_table
    */
-  delete(gaxOptions, callback?) {
-    if (is.fn(gaxOptions)) {
-      callback = gaxOptions;
-      gaxOptions = {};
-    }
+  delete(
+    gaxOptionsOrCallback?: CallOptions | DeleteTableCallback,
+    callback?: DeleteTableCallback
+  ): Promise<DeleteTableReposne> | void {
+    const gaxOptions =
+      typeof gaxOptionsOrCallback === 'object' ? gaxOptionsOrCallback : {};
+    callback =
+      typeof gaxOptionsOrCallback === 'function'
+        ? gaxOptionsOrCallback
+        : callback;
 
     this.bigtable.request(
       {
