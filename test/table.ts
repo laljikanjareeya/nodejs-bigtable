@@ -27,7 +27,7 @@ import {Row} from '../src/row.js';
 import * as tblTypes from '../src/table';
 import * as ds from '../src/decorateStatus.js';
 import {ServiceError} from '@grpc/grpc-js';
-import {RequestConfig, RequestCallback} from '../src/index.js';
+import {google} from '../proto/bigtable';
 
 const sandbox = sinon.createSandbox();
 const noop = () => {};
@@ -1265,37 +1265,37 @@ describe('Bigtable/Table', function() {
 
   describe('exists', function() {
     it('should not require gaxOptions', function(done) {
-      table.getMetadata = function(options_) {
+      sandbox.stub(table, 'getMetadata').callsFake(options_ => {
         assert.deepStrictEqual(options_.gaxOptions, {});
         done();
-      };
+      });
       table.exists(assert.ifError);
     });
 
     it('should pass gaxOptions to getMetadata', function(done) {
       const gaxOptions = {};
-      table.getMetadata = function(options_) {
+      sandbox.stub(table, 'getMetadata').callsFake(options_ => {
         assert.strictEqual(options_.gaxOptions, gaxOptions);
         done();
-      };
+      });
       table.exists(gaxOptions, assert.ifError);
     });
 
     it('should pass view = name to getMetadata', function(done) {
       const gaxOptions = {};
-      table.getMetadata = function(options_) {
+      sandbox.stub(table, 'getMetadata').callsFake(options_ => {
         assert.strictEqual(options_.view, 'name');
         done();
-      };
+      });
       table.exists(gaxOptions, assert.ifError);
     });
 
     it('should return false if error code is 5', function(done) {
       const error: any = new Error('Error.');
       error.code = 5;
-      table.getMetadata = function(gaxOptions, callback) {
+      sandbox.stub(table, 'getMetadata').callsFake((gaxOptions, callback) => {
         callback(error);
-      };
+      });
       table.exists(function(err, exists) {
         assert.ifError(err);
         assert.strictEqual(exists, false);
@@ -1306,9 +1306,9 @@ describe('Bigtable/Table', function() {
     it('should return error if code is not 5', function(done) {
       const error: any = new Error('Error.');
       error.code = 'NOT-5';
-      table.getMetadata = function(gaxOptions, callback) {
+      sandbox.stub(table, 'getMetadata').callsFake((gaxOptions, callback) => {
         callback(error);
-      };
+      });
       table.exists(function(err) {
         assert.strictEqual(err, error);
         done();
@@ -1316,9 +1316,9 @@ describe('Bigtable/Table', function() {
     });
 
     it('should return true if no error', function(done) {
-      table.getMetadata = function(gaxOptions, callback) {
+      sandbox.stub(table, 'getMetadata').callsFake((gaxOptions, callback) => {
         callback(null, {});
-      };
+      });
 
       table.exists(function(err, exists) {
         assert.ifError(err);
@@ -1351,19 +1351,19 @@ describe('Bigtable/Table', function() {
         gaxOptions: {},
       };
 
-      table.getMetadata = function(options_) {
+      sandbox.stub(table, 'getMetadata').callsFake(options_ => {
         assert.strictEqual(options_.gaxOptions, options.gaxOptions);
         done();
-      };
+      });
 
       table.get(options, assert.ifError);
     });
 
     it('should not require an options object', function(done) {
-      table.getMetadata = function(options) {
+      sandbox.stub(table, 'getMetadata').callsFake(options => {
         assert.deepStrictEqual(options, {gaxOptions: undefined});
         done();
-      };
+      });
       table.get(assert.ifError);
     });
 
@@ -1376,9 +1376,9 @@ describe('Bigtable/Table', function() {
         gaxOptions: {},
       };
 
-      table.getMetadata = function(gaxOptions, callback) {
+      sandbox.stub(table, 'getMetadata').callsFake((gaxOptions, callback) => {
         callback(error);
-      };
+      });
 
       table.create = function(options_, callback) {
         assert.strictEqual(options_.gaxOptions, options.gaxOptions);
@@ -1396,9 +1396,9 @@ describe('Bigtable/Table', function() {
         autoCreate: true,
       };
 
-      table.getMetadata = function(gaxOptions, callback) {
+      sandbox.stub(table, 'getMetadata').callsFake((gaxOptions, callback) => {
         callback(error);
-      };
+      });
 
       table.create = function() {
         throw new Error('Should not create.');
@@ -1414,9 +1414,9 @@ describe('Bigtable/Table', function() {
       const error: any = new Error('Error.');
       error.code = 5;
 
-      table.getMetadata = function(gaxOptions, callback) {
+      sandbox.stub(table, 'getMetadata').callsFake((gaxOptions, callback) => {
         callback(error);
-      };
+      });
 
       table.create = function() {
         throw new Error('Should not create.');
@@ -1429,11 +1429,11 @@ describe('Bigtable/Table', function() {
     });
 
     it('should return an error from getMetadata', function(done) {
-      const error = new Error('Error.');
+      const error = new Error('Error.') as ServiceError;
 
-      table.getMetadata = function(gaxOptions, callback) {
+      sandbox.stub(table, 'getMetadata').callsFake((gaxOptions, callback) => {
         callback(error);
-      };
+      });
 
       table.get(function(err) {
         assert.strictEqual(err, error);
@@ -1444,9 +1444,9 @@ describe('Bigtable/Table', function() {
     it('should return self and API response', function(done) {
       const apiResponse = {};
 
-      table.getMetadata = function(gaxOptions, callback) {
+      sandbox.stub(table, 'getMetadata').callsFake((gaxOptions, callback) => {
         callback(null, apiResponse);
-      };
+      });
 
       table.get(function(err, table_, apiResponse_) {
         assert.ifError(err);
@@ -1512,21 +1512,21 @@ describe('Bigtable/Table', function() {
     it('should accept gaxOptions', function(done) {
       const gaxOptions = {};
 
-      table.getMetadata = function(options) {
+      sandbox.stub(table, 'getMetadata').callsFake(options => {
         assert.strictEqual(options.gaxOptions, gaxOptions);
         done();
-      };
+      });
 
       table.getReplicationStates(gaxOptions, assert.ifError);
     });
 
     it('should return an error to the callback', function(done) {
-      const error = new Error('err');
+      const error = new Error('err') as ServiceError;
       const response = {};
 
-      table.getMetadata = function(options, callback) {
+      sandbox.stub(table, 'getMetadata').callsFake((options, callback) => {
         callback(error, response);
-      };
+      });
 
       table.getReplicationStates(function(err) {
         assert.strictEqual(err, error);
@@ -1540,11 +1540,11 @@ describe('Bigtable/Table', function() {
           cluster1: 'READY',
           cluster2: 'INITIALIZING',
         },
-      };
+      } as google.bigtable.admin.v2.ITable;
 
-      table.getMetadata = function(options, callback) {
+      sandbox.stub(table, 'getMetadata').callsFake((options, callback) => {
         callback(null, response);
-      };
+      });
 
       table.getReplicationStates(function(err, clusterStates) {
         assert.ifError(err);
@@ -1563,21 +1563,21 @@ describe('Bigtable/Table', function() {
     it('should accept gaxOptions', function(done) {
       const gaxOptions = {};
 
-      table.getMetadata = function(options) {
+      sandbox.stub(table, 'getMetadata').callsFake(options => {
         assert.strictEqual(options.gaxOptions, gaxOptions);
         done();
-      };
+      });
 
       table.getFamilies(gaxOptions, assert.ifError);
     });
 
     it('should return an error to the callback', function(done) {
-      const error = new Error('err');
+      const error = new Error('err') as ServiceError;
       const response = {};
 
-      table.getMetadata = function(options, callback) {
+      sandbox.stub(table, 'getMetadata').callsFake((options, callback) => {
         callback(error, response);
-      };
+      });
 
       table.getFamilies(function(err) {
         assert.strictEqual(err, error);
@@ -1594,13 +1594,13 @@ describe('Bigtable/Table', function() {
         columnFamilies: {
           test: metadata,
         },
-      };
+      } as google.bigtable.admin.v2.ITable;
 
       const fakeFamily = {} as Family;
 
-      table.getMetadata = function(options, callback) {
+      sandbox.stub(table, 'getMetadata').callsFake((options, callback) => {
         callback(null, response);
-      };
+      });
 
       sandbox.stub(table, 'family').callsFake(id => {
         assert.strictEqual(id, 'test');
