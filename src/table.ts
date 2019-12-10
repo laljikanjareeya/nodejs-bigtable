@@ -24,7 +24,13 @@ import * as is from 'is';
 const pumpify = require('pumpify');
 import * as through from 'through2';
 
-import {Family} from './family';
+import {
+  Family,
+  CreateFamilyOptions,
+  CreateFamilyResponse,
+  CreateFamilyCallback,
+  IColumnFamily,
+} from './family';
 import {Filter} from './filter';
 import {Mutation} from './mutation';
 import {Row} from './row';
@@ -39,20 +45,6 @@ import {google} from '../proto/bigtable';
 const RETRYABLE_STATUS_CODES = new Set([4, 10, 14]);
 // (1=CANCELLED)
 const IGNORED_STATUS_CODES = new Set([1]);
-export interface CreateFamilyOptions extends OptionInterface {
-  rule?: Rule;
-}
-export type CreateFamilyCallback = RequestCallback<
-  Family,
-  google.bigtable.v2.IFamily
->;
-export type CreateFamilyResponse = [Family, google.bigtable.v2.IFamily];
-export interface Rule {
-  age?: {};
-  versions?: number;
-  intersect?: boolean;
-  union?: boolean;
-}
 /**
  * @typedef {object} Policy
  * @property {number} [version] Specifies the format of the policy.
@@ -388,7 +380,7 @@ Please use the format 'prezzy' or '${instance.name}/tables/prezzy'.`);
       modifications: [mod],
     };
 
-    this.bigtable.request<Family, google.bigtable.v2.IFamily>(
+    this.bigtable.request<Family, google.bigtable.admin.v2.ITable>(
       {
         client: 'BigtableTableAdminClient',
         method: 'modifyColumnFamilies',
@@ -402,7 +394,7 @@ Please use the format 'prezzy' or '${instance.name}/tables/prezzy'.`);
         }
 
         const family = this.family(id);
-        family.metadata = resp;
+        family.metadata = resp as IColumnFamily;
 
         callback!(null, family, resp!);
       }

@@ -21,7 +21,7 @@ import {PassThrough} from 'stream';
 import * as through from 'through2';
 
 import {ChunkTransformer} from '../src/chunktransformer.js';
-import {Family} from '../src/family.js';
+import {Family, CreateFamilyOptions} from '../src/family.js';
 import {Mutation} from '../src/mutation.js';
 import {Row} from '../src/row.js';
 import * as tblTypes from '../src/table';
@@ -342,7 +342,7 @@ describe('Bigtable/Table', function() {
 
       table.createFamily(
         COLUMN_ID,
-        {rule} as tblTypes.CreateFamilyOptions,
+        {rule} as CreateFamilyOptions,
         assert.ifError
       );
     });
@@ -1198,7 +1198,7 @@ describe('Bigtable/Table', function() {
 
         assert.deepStrictEqual(config.gaxOpts, {});
 
-        callback!(); // done()
+        callback!(null); // done()
       };
 
       table.delete(done);
@@ -1225,7 +1225,7 @@ describe('Bigtable/Table', function() {
         assert.strictEqual(config.method, 'dropRowRange');
         assert.strictEqual(config.reqOpts.name, TABLE_NAME);
         assert.deepStrictEqual(config.gaxOpts, {});
-        callback!();
+        callback!(null);
       };
 
       table.deleteRows(prefix, done);
@@ -2740,7 +2740,7 @@ describe('Bigtable/Table', function() {
         assert.strictEqual(config.reqOpts.name, TABLE_NAME);
         assert.strictEqual(config.reqOpts.deleteAllDataFromTable, true);
         assert.deepStrictEqual(config.gaxOpts, {});
-        callback!();
+        callback!(null);
       };
 
       table.truncate(done);
