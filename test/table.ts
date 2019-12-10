@@ -27,7 +27,6 @@ import {Row} from '../src/row.js';
 import * as tblTypes from '../src/table';
 import * as ds from '../src/decorateStatus.js';
 import {ServiceError} from '@grpc/grpc-js';
-import {RequestConfig, RequestCallback} from '../src/index.js';
 
 const sandbox = sinon.createSandbox();
 const noop = () => {};
@@ -1380,10 +1379,10 @@ describe('Bigtable/Table', function() {
         callback(error);
       };
 
-      table.create = function(options_, callback) {
+      sinon.stub(table, 'create').callsFake((options_, callback) => {
         assert.strictEqual(options_.gaxOptions, options.gaxOptions);
-        callback(); // done()
-      };
+        callback!(); // done()
+      });
 
       table.get(options, done);
     });
