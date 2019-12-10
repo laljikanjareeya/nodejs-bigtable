@@ -24,7 +24,13 @@ import * as is from 'is';
 const pumpify = require('pumpify');
 import * as through from 'through2';
 
-import {Family} from './family';
+import {
+  Family,
+  CreateFamilyOptions,
+  CreateFamilyResponse,
+  CreateFamilyCallback,
+  IColumnFamily,
+} from './family';
 import {Filter} from './filter';
 import {Mutation} from './mutation';
 import {Row} from './row';
@@ -39,7 +45,6 @@ import {google} from '../proto/bigtable';
 const RETRYABLE_STATUS_CODES = new Set([4, 10, 14]);
 // (1=CANCELLED)
 const IGNORED_STATUS_CODES = new Set([1]);
-
 /**
  * @typedef {object} Policy
  * @property {number} [version] Specifies the format of the policy.
@@ -304,6 +309,16 @@ Please use the format 'prezzy' or '${instance.name}/tables/prezzy'.`);
     this.instance.createTable(this.id, options, callback);
   }
 
+  createFamily(
+    id: string,
+    options?: CreateFamilyOptions
+  ): Promise<CreateFamilyResponse>;
+  createFamily(id: string, callback: CreateFamilyCallback): void;
+  createFamily(
+    id: string,
+    options: CreateFamilyOptions,
+    callback: CreateFamilyCallback
+  ): void;
   /**
    * Create a column family.
    *
@@ -319,7 +334,7 @@ Please use the format 'prezzy' or '${instance.name}/tables/prezzy'.`);
    * @param {string} id The unique identifier of column family.
    * @param {object} [options] Configuration object.
    * @param {object} [options.gaxOptions] Request configuration options, outlined
-   *     here: https://googleapis.github.io/gax-nodejs/global.html#CallOptions.
+   *     here: https://googleapis.github.io/gax-nodejs/interfaces/CallOptions.html.
    * @param {object} [options.rule] Garbage collection rule
    * @param {object} [options.rule.age] Delete cells in a column older than the
    *     given age. Values must be at least 1 millisecond.
@@ -337,11 +352,15 @@ Please use the format 'prezzy' or '${instance.name}/tables/prezzy'.`);
    * @example <caption>include:samples/document-snippets/table.js</caption>
    * region_tag:bigtable_create_family
    */
-  createFamily(id, options, callback?) {
-    if (is.function(options)) {
-      callback = options;
-      options = {};
-    }
+  createFamily(
+    id: string,
+    optionsOrCallback?: CreateFamilyOptions | CreateFamilyCallback,
+    callback?: CreateFamilyCallback
+  ): Promise<CreateFamilyResponse> | void {
+    const options =
+      typeof optionsOrCallback === 'object' ? optionsOrCallback : {};
+    callback =
+      typeof optionsOrCallback === 'function' ? optionsOrCallback : callback;
 
     if (!id) {
       throw new Error('An id is required to create a family.');
@@ -361,7 +380,7 @@ Please use the format 'prezzy' or '${instance.name}/tables/prezzy'.`);
       modifications: [mod],
     };
 
-    this.bigtable.request(
+    this.bigtable.request<Family, google.bigtable.admin.v2.ITable>(
       {
         client: 'BigtableTableAdminClient',
         method: 'modifyColumnFamilies',
@@ -370,14 +389,14 @@ Please use the format 'prezzy' or '${instance.name}/tables/prezzy'.`);
       },
       (err, resp) => {
         if (err) {
-          callback(err, null, resp);
+          callback!(err, null, resp!);
           return;
         }
 
         const family = this.family(id);
-        family.metadata = resp;
+        family.metadata = resp as IColumnFamily;
 
-        callback(null, family, resp);
+        callback!(null, family, resp!);
       }
     );
   }
