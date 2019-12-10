@@ -147,7 +147,10 @@ export interface TestIamPermissionsCallback {
  * @property {string[]} 0 A subset of permissions that the caller is allowed.
  */
 export type TestIamPermissionsResponse = [string[]];
-export interface CreateTableOptions extends OptionInterface {}
+export interface CreateTableOptions extends OptionInterface {
+  families?: object | string[];
+  splits?: string[];
+}
 export type CreateTableResponse = [Table, google.bigtable.admin.v2.ITable];
 export type CreateTableCallback = RequestCallback<
   Table,
@@ -277,8 +280,11 @@ Please use the format 'prezzy' or '${instance.name}/tables/prezzy'.`);
    * Create a table.
    *
    * @param {object} [options] See {@link Instance#createTable}.
+   * @param {object|string[]} [options.families] Column families to be created
+   *     within the table.
    * @param {object} [options.gaxOptions] Request configuration options, outlined
    *     here: https://googleapis.github.io/gax-nodejs/global.html#CallOptions.
+   * @param {string[]} [options.splits] Initial
    * @param {function} callback The callback function.
    * @param {?error} callback.err An error returned while making this request.
    * @param {Table} callback.table The newly created table.
