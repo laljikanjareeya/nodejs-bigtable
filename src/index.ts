@@ -77,6 +77,32 @@ export type GetInstancesResponse = [
   {} | null,
   google.bigtable.admin.v2.IListInstancesResponse
 ];
+export interface OptionInterface {
+  gaxOptions?: CallOptions;
+}
+
+export interface CreateInstanceOptions extends OptionInterface {
+  clusters?: object[];
+  displayName: string;
+  labels?: {[k: string]: string};
+  type?: string;
+}
+
+export interface CreateInstanceCallback {
+  (
+    err: ServiceError | null,
+    result?: Instance | null,
+    operation?: gax.Operation | null,
+    apiResponse?: google.longrunning.IOperation
+  ): void;
+}
+
+export type CreateInstanceResponse = [
+  Instance,
+  gax.Operation | null,
+  google.longrunning.IOperation
+];
+
 /**
  * @typedef {object} ClientConfig
  * @property {string} [apiEndpoint] Override the default API endpoint used
@@ -481,18 +507,25 @@ export class Bigtable {
     this.shouldReplaceProjectIdToken = this.projectId === '{{projectId}}';
   }
 
+  createInstance(
+    id: string,
+    options: CreateInstanceOptions
+  ): Promise<CreateInstanceResponse>;
+  createInstance(id: string, callback: CreateInstanceCallback): void;
+  createInstance(
+    id: string,
+    options: CreateInstanceOptions,
+    callback: CreateInstanceCallback
+  ): void;
   /**
-   * Create a Cloud Bigtable instance.
+   * Config for the new instance.
    *
-   * @see [Creating a Cloud Bigtable Instance]{@link https://cloud.google.com/bigtable/docs/creating-instance}
-   *
-   * @param {string} id The unique id of the instance.
-   * @param {object} options Instance creation options.
-   * @param {object[]} options.clusters The clusters to be created within the
+   * @typedef {object} CreateInstanceOptions
+   * @property {object[]} clusters The clusters to be created within the
    *     instance.
-   * @param {string} options.displayName The descriptive name for this instance
+   * @property {string} displayName The descriptive name for this instance
    *     as it appears in UIs.
-   * @param {Object.<string, string>} [options.labels] Labels are a flexible and
+   * @property {Object.<string, string>} [labels] Labels are a flexible and
    *     lightweight mechanism for organizing cloud resources into groups that
    *     reflect a customer's organizational needs and deployment strategies.
    *     They can be used to filter resources and aggregate metrics.
@@ -503,17 +536,35 @@ export class Bigtable {
    * to the regular expression: `[\p{Ll}\p{Lo}\p{N}_-]{0,63}`.
    *   * No more than 64 labels can be associated with a given resource.
    *   * Keys and values must both be under 128 bytes.
-   * @param {string} [options.type] The type of the instance. Options are
+   * @property {string} [type] The type of the instance. Options are
    *     'production' or 'development'.
-   * @param {object} [options.gaxOptions] Request configuration options, outlined
-   *     here: https://googleapis.github.io/gax-nodejs/CallSettings.html.
-   * @param {function} callback The callback function.
-   * @param {?error} callback.err An error returned while making this request.
-   * @param {Instance} callback.instance The newly created
-   *     instance.
-   * @param {Operation} callback.operation An operation object that can be used
+   * @property {object} [gaxOptions] Request configuration options, outlined
+   *     here: https://googleapis.github.io/gax-nodejs/classes/CallSettings.html.
+   */
+  /**
+   * @typedef {array} CreateInstanceResponse
+   * @property {Instance} 0 The new {@link Instance}.
+   * @property {Operation} 1 An {@link Operation} object that can be used to check
+   *     the status of the request.
+   * @property {object} 2 The full API response.
+   */
+  /**
+   * @callback CreateInstanceCallback
+   * @param {?Error} err An error returned while making this request.
+   * @param {Instance} instance The newly created instance.
+   * @param {Operation} operation An operation object that can be used
    *     to check the status of the request.
-   * @param {object} callback.apiResponse The full API response.
+   * @param {object} apiResponse The full API response.
+   */
+  /**
+   * Create a Cloud Bigtable instance.
+   *
+   * @see [Creating a Cloud Bigtable Instance]{@link https://cloud.google.com/bigtable/docs/creating-instance}
+   *
+   * @param {string} id The unique id of the instance.
+   * @param {CreateInstanceOptions} options Instance creation options.
+   * @param {CreateInstanceCallback} [callback] The callback function.
+   * @returns {Promise<CreateInstanceResponse>}
    *
    * @example
    * const Bigtable = require('@google-cloud/bigtable');
@@ -555,11 +606,17 @@ export class Bigtable {
    *   const apiResponse = data[2];
    * });
    */
-  createInstance(id, options, callback) {
-    if (is.function(options)) {
-      callback = options;
-      options = {};
-    }
+  createInstance(
+    id: string,
+    optionsOrCallback?: CreateInstanceOptions | CreateInstanceCallback,
+    callback?: CreateInstanceCallback
+  ): Promise<CreateInstanceResponse> | void {
+    const options =
+      typeof optionsOrCallback === 'object'
+        ? optionsOrCallback
+        : ({} as CreateInstanceOptions);
+    callback =
+      typeof optionsOrCallback === 'function' ? optionsOrCallback : callback;
 
     const reqOpts: any = {
       parent: this.projectName,
@@ -574,15 +631,18 @@ export class Bigtable {
       reqOpts.instance.type = Instance.getTypeType_(options.type);
     }
 
-    reqOpts.clusters = arrify(options.clusters).reduce((clusters, cluster) => {
-      clusters[cluster.id] = {
-        location: Cluster.getLocation_(this.projectId, cluster.location),
-        serveNodes: cluster.nodes,
-        defaultStorageType: Cluster.getStorageType_(cluster.storage),
-      };
+    reqOpts.clusters = arrify(options.clusters!).reduce(
+      (clusters, cluster: any) => {
+        clusters[cluster.id] = {
+          location: Cluster.getLocation_(this.projectId, cluster.location),
+          serveNodes: cluster.nodes,
+          defaultStorageType: Cluster.getStorageType_(cluster.storage),
+        };
 
-      return clusters;
-    }, {});
+        return clusters;
+      },
+      {}
+    );
 
     this.request(
       {
@@ -591,14 +651,12 @@ export class Bigtable {
         reqOpts,
         gaxOpts: options.gaxOptions,
       },
-      (...args) => {
-        const err = args[0];
-
+      (err, ...args) => {
         if (!err) {
-          args.splice(1, 0, this.instance(id));
+          args.splice(0, 0, this.instance(id));
         }
 
-        callback(...args);
+        callback!(err, ...args);
       }
     );
   }
