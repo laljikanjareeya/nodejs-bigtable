@@ -35,6 +35,27 @@ import {
 } from './table';
 import {CallOptions} from 'google-gax';
 
+import {Bigtable} from '.';
+import {google} from '../proto/bigtable';
+import {ServiceError} from '@grpc/grpc-js';
+
+export interface CreateInstanceOptions extends CallOptions {
+  clusters: Cluster[];
+  displayName: string;
+  labels?: {[key: string]: string};
+  type?: string;
+}
+export type CreateInstanceCallback = (
+  err: ServiceError,
+  instance: Instance,
+  opertaion: google.longrunning.Operation,
+  apiResponse: google.bigtable.admin.v2.Instance
+) => void;
+export type CreateInstanceResponse = [
+  Instance,
+  google.longrunning.Operation,
+  google.bigtable.admin.v2.Instance
+];
 /**
  * Create an Instance object to interact with a Cloud Bigtable instance.
  *
@@ -50,15 +71,15 @@ import {CallOptions} from 'google-gax';
  */
 
 export class Instance {
-  bigtable;
-  id;
-  name;
-  metadata;
-  getTablesStream;
-  constructor(bigtable, id) {
+  bigtable: Bigtable;
+  id: string;
+  name: string;
+  metadata!: google.bigtable.admin.v2.IInstance;
+  getTablesStream!: Function;
+  constructor(bigtable: Bigtable, id: string) {
     this.bigtable = bigtable;
 
-    let name;
+    let name: string;
     if (id.includes('/')) {
       if (id.startsWith(`${bigtable.projectName}/instances/`)) {
         name = id;
@@ -70,7 +91,7 @@ Please use the format 'my-instance' or '${bigtable.projectName}/instances/my-ins
       name = `${bigtable.projectName}/instances/${id}`;
     }
 
-    this.id = name.split('/').pop();
+    this.id = name.split('/').pop()!;
     this.name = name;
   }
 
@@ -86,8 +107,8 @@ Please use the format 'my-instance' or '${bigtable.projectName}/instances/my-ins
    * Instance.getTypeType_('production');
    * // 1
    */
-  static getTypeType_(type) {
-    const types = {
+  static getTypeType_(type: string) {
+    const types: {[key: string]: number} = {
       unspecified: 0,
       production: 1,
       development: 2,
@@ -106,10 +127,16 @@ Please use the format 'my-instance' or '${bigtable.projectName}/instances/my-ins
    * @param {string} name The name of the app profile.
    * @returns {AppProfile}
    */
-  appProfile(name) {
+  appProfile(name: string) {
     return new AppProfile(this, name);
   }
 
+  create(options: CreateInstanceOptions): Promise<CreateInstanceResponse>;
+  create(callback: CreateInstanceCallback): void;
+  create(
+    options: CreateInstanceOptions,
+    callback: CreateInstanceCallback
+  ): void;
   /**
    * Create an instance.
    *
@@ -128,12 +155,16 @@ Please use the format 'my-instance' or '${bigtable.projectName}/instances/my-ins
    * @example <caption>include:samples/document-snippets/instance.js</caption>
    * region_tag:bigtable_create_instance
    */
-  create(options, callback?) {
-    if (is.fn(options)) {
-      callback = options;
-      options = {};
-    }
-
+  create(
+    optionsOrCallback: CreateInstanceOptions | CreateInstanceCallback,
+    callback?: CreateInstanceCallback
+  ): void | Promise<CreateInstanceResponse> {
+    const options =
+      typeof optionsOrCallback === 'object'
+        ? optionsOrCallback
+        : ({} as CreateInstanceOptions);
+    callback =
+      typeof optionsOrCallback === 'function' ? optionsOrCallback : callback;
     this.bigtable.createInstance(this.id, options, callback);
   }
 
